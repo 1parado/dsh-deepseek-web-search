@@ -1,0 +1,28 @@
+event: ready
+data: {"request_message_id":1,"response_message_id":2,"model_type":"default"}
+
+event: update_session
+data: {"updated_at":1776951921.635201}
+
+data: {"v":{"response":{"message_id":2,"parent_id":1,"model":"","role":"ASSISTANT","thinking_enabled":false,"status":"WIP","accumulated_token_usage":0,"search_enabled":true,"fragments":[{"id":2,"type":"SEARCH","status":"WIP","content":null,"queries":[{"query":"示例查询一"},{"query":"示例查询二"}],"results":[]}],"has_pending_fragment":false,"auto_continue":false}}}
+
+data: {"p":"response/fragments/-1/results","v":[{"url":"https://example.com/a","title":"A 文档","snippet":"第一段引用摘要。","cite_index":1,"published_at":1763308800.0,"site_icon":"https://cdn.deepseek.com/site-icons/example.com","site_name":"example.com","query_indexes":[0,1]},{"url":"https://example.com/b","title":"B 文档","snippet":"第二段引用摘要。","cite_index":2,"published_at":1776182400.0,"site_name":"example.com","query_indexes":[1]},{"url":"https://example.com/c","title":"C 文档","snippet":"没有发布时间的来源。","cite_index":3,"site_name":"example.com","query_indexes":[0]},{"url":"https://example.com/c","title":"C 文档（重复项，必须被丢弃）","snippet":"同一个 URL 在多次检索里重复出现。","cite_index":3,"site_name":"example.com","query_indexes":[1]},{"url":"https://example.com/d","title":"D 文档","snippet":"published_at 为 null 的来源。","cite_index":4,"published_at":null,"site_name":"example.com","query_indexes":[0]}]}
+
+data: {"p":"response/fragments/-1/status","v":"FINISHED"}
+
+data: {"p":"response/conversation_mode","v":"SEARCH"}
+
+data: {"p":"response/has_pending_fragment","v":true}
+
+data: {"p":"response","o":"BATCH","v":[{"p":"fragments","o":"APPEND","v":[{"id":3,"type":"RESPONSE","content":"这是回答的","references":[],"stage_id":2}]},{"p":"has_pending_fragment","o":"SET","v":false}]}
+
+data: {"p":"response/fragments/-1/content","o":"APPEND","v":"第一"}
+
+data: {"v":"段"}
+
+data: {"v":"。"}
+
+data: {"p":"response/status","o":"SET","v":"FINISHED"}
+
+event: close
+data: {"click_behavior":"none","auto_resume":false}

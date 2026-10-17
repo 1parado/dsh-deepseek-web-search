@@ -1,0 +1,52 @@
+{
+  "name": "dsh-deepseek-web-search",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DeepSeek 网页版（chat.deepseek.com）搜索提供方：用网页账号 userToken 把联网搜索接入 DSH 的 ctx.web seam，内置 web_search 工具无需改动。",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "scripts",
+    "docs",
+    "cordis.patch.yml",
+    "README.md",
+    "SECURITY.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek",
+    "deepseek-web",
+    "web-search",
+    "websearch"
+  ],
+  "author": "1parado",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1parado/dsh-deepseek-web-search.git"
+  },
+  "homepage": "https://github.com/1parado/dsh-deepseek-web-search#readme",
+  "bugs": {
+    "url": "https://github.com/1parado/dsh-deepseek-web-search/issues"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node scripts/check.mjs"
+  },
+  "license": "MIT"
+}

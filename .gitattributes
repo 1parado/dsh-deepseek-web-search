@@ -1,0 +1,12 @@
+# 统一换行符，避免 Windows 检出把整个仓库标成改动
+* text=auto eol=lf
+
+# 二进制
+*.png binary
+*.ico binary
+*.woff2 binary
+
+# 让 GitHub 正确识别语言与生成 diff
+package.json text
+*.mjs text
+*.yml text

@@ -1,0 +1,20 @@
+# 依赖与构建产物
+node_modules/
+*.tgz
+
+# 本地凭证：绝不能进仓库
+credentials.json
+.env
+.env.*
+
+# 运行时产物
+*.log
+coverage/
+.dsh-deepseek-web-search/
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

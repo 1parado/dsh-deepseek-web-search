@@ -1,0 +1,25 @@
+# dsh-deepseek-web-search —— dsh bundle patch
+#
+# 这个文件是该插件的 bundle 层补丁，由 package.json 的 dsh.bundle.patch 声明。
+# 它做两件事：
+#
+# 1) 把 web 能力 seam 的搜索提供方钉到本插件。
+#    dsh-base 默认把 ctx.web 的 searchProvider 钉成 'deepseek-official'（官方
+#    Anthropic 兼容端点 + DEEPSEEK_API_KEY）。seam 的选择规则是：配置了 id 就
+#    只认这个 id，因此本插件即使注册成功，不覆盖这一项也永远不会被选中。
+#    这里同时写回 fetchProvider，因为该节点的 config 是被整体替换的。
+#
+# 2) 挂载本插件本体。
+#
+# 注意：补丁层的应用顺序是 bundles 列表 -> profile 的 cordis.patch.yml。
+# 如果之后想改用别的搜索后端，在 profile 的 cordis.patch.yml 里再覆盖一次
+# `- id: web` 即可，那一层更靠后、优先级更高。
+- id: web
+  name: '@deepseek-ai/dsh-web'
+  config:
+    searchProvider: deepseek-web
+    fetchProvider: http
+- insert:
+    - id: deepseek-web-search
+      name: 'dsh-deepseek-web-search'
+      config: {}

@@ -1,0 +1,38 @@
+MIT License
+
+Copyright (c) 2026 dsh-deepseek-web-search contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## 第三方代码
+
+`lib/pow.js` 的 DeepSeekHashV1 实现（含 KECCAK-p[1600,23] 置换、增量 nonce 搜索
+与 `x-ds-pow-response` 包装）移植自 magpie-deepseekweb2api：
+
+    magpie-deepseekweb2api
+    https://github.com/mu-zi-lee/magpie-deepseekweb2api
+    MIT License, Copyright (c) 2026 木子不是木子狸
+
+移植方式：算法、常量、字节序与搜索结构保持不变；仅收敛接口（导出 `sha3Digest` /
+`deepSeekHashV1` / `solvePow` / `solvePowAsync` / `powHeader`）并改写注释。
+
+`test/fixtures/search-stream.txt` 的帧结构依据一份公开的 chat.deepseek.com
+联网搜索实测抓包整理，字段名与事件顺序未改动，内容为示例数据。
