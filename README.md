@@ -67,37 +67,70 @@ flowchart LR
 
 ## 安装
 
-需要 DSH 桌面端（对齐运行时 `0.2.0-rc.2`）与 Node `>=22.19`。
+需要 DSH 桌面端（对齐运行时 `0.2.0-rc.2`）。全程图形界面，无需命令行。
 
-**桌面端请用应用内的插件管理器安装。** 桌面 profile 由 Electron 独占管理，`dsh plugin` CLI 无法真正管理它：
+### 一键安装（30 秒）
+
+1. 打开 **设置 → 内置插件 → 添加插件**
+2. 在输入框粘贴（**注意带 `github:` 前缀**）：
+
+   ```text
+   github:1parado/dsh-deepseek-web-search
+   ```
+
+3. 点 **安装**，等待完成
+
+   ![添加插件对话框：粘贴 GitHub 地址后点安装](docs/install-dialog.png)
+
+4. **重启 DSH**（插件在启动时加载）
+5. 到 **设置 → 内置插件 → DeepSeek 网页搜索** → 选浏览器 → **登录并连接 DeepSeek**
+
+完成。之后 `web_search` 即用你的网页版账号联网搜索。
+
+> **输入框报 "not a package name the registry accepts"？**
+> 那是漏了 `github:` 前缀 —— 裸的 `1parado/dsh-deepseek-web-search` 会被当成
+> npm 包名校验而拒绝。以下写法都被接受：
+>
+> ```text
+> github:1parado/dsh-deepseek-web-search
+> https://github.com/1parado/dsh-deepseek-web-search
+> ```
+
+### 更新插件
+
+同一入口重新安装一次即可：**添加插件 → 粘贴同一个地址 → 安装**，
+pnpm 会重新解析到 main 分支最新提交。装完重启 DSH。
+
+<details>
+<summary>进阶：命令行方式（不推荐，桌面 profile 有坑）</summary>
+
+桌面 profile 由 Electron 独占管理，`dsh plugin --profile desktop add` 会在
+bundle 注册一步挂住（CLI 能写 package.json 和 node_modules，却完不成注册）。
+直接验证：
 
 ```text
+$ dsh --profile desktop --dump-config
 error: profile "desktop" is managed exclusively by the Electron application
 ```
 
-三步：
-
-**① 设置 → 插件 → 安装**，填入以下任一种来源：
-
-```text
-github:1parado/dsh-deepseek-web-search     # 从 GitHub 装
-E:\path\to\dsh-deepseek-web-search         # 或本地目录的绝对路径
-```
-
-**② 重启 DSH** —— bundle patch 在启动时应用。
-
-**③ 填入网页版凭证**（见下一节）。
-
-<details>
-<summary>CLI 安装（仅适用于自建 profile，<b>不适用于 desktop</b>）</summary>
-
-`--profile` 是必填参数，漏了会报 `required option '--profile <name>' not specified`：
+如果确实需要命令行（例如脚本化部署自建 profile），必须用 DSH 自带 pnpm
+并手动补 bundles 注册：
 
 ```powershell
-dsh plugin --profile <自建 profile 名> add github:1parado/dsh-deepseek-web-search
-```
+$pnpm = "$env:DSH_HOME\dsh-runtimes\dsh-primary-runtime\dependencies\pnpm\dist\pnpm.mjs"
+$profileDir = "$env:DSH_HOME\profiles\desktop"
+Push-Location $profileDir
+node $pnpm add "github:1parado/dsh-deepseek-web-search"
+Pop-Location
 
-但 `desktop` 这个 profile 例外：CLI 能改它的 `package.json` 与 `node_modules`，却走不到最后的 bundle 注册，进程会挂住不退出。桌面端一律走上面的 GUI 路径。
+# 关键：把包名追加进 dsh.profile.bundles，否则插件不会被加载
+$manifest = "$profileDir\package.json"
+$m = Get-Content $manifest -Raw | ConvertFrom-Json
+if ($m.dsh.profile.bundles -notcontains 'dsh-deepseek-web-search') {
+  $m.dsh.profile.bundles += 'dsh-deepseek-web-search'
+  $m | ConvertTo-Json -Depth 10 | Set-Content $manifest -Encoding utf8NoBOM
+}
+```
 
 </details>
 
@@ -109,7 +142,7 @@ dsh plugin --profile <自建 profile 名> add github:1parado/dsh-deepseek-web-se
 dsh-deepseek-web-search：已注册搜索提供方 "deepseek-web"（model=default，端点=…，可用性=就绪）
 ```
 
-若没有这行、或搜索报 `configured web provider "deepseek-web" is not registered`，说明 bundle 层已生效但插件没挂载 —— 到 **设置 → 插件** 确认它处于启用状态。
+若没有这行、或搜索报 `configured web provider "deepseek-web" is not registered`，说明 bundle 层已生效但插件没挂载 —— 到 **设置 → 内置插件** 确认它处于启用状态。
 
 ## 填凭证
 
@@ -292,8 +325,4 @@ cordis.patch.yml  bundle 补丁：钉 searchProvider + 挂载插件
 ## 致谢
 
 - [magpie-deepseekweb2api](https://github.com/mu-zi-lee/magpie-deepseekweb2api)（[木子不是木子狸](https://github.com/mu-zi-lee)）—— 本项目的起点。它把 chat.deepseek.com 的网页协议（`userToken` + PoW + SSE）在 Magpie 上跑通并开源，本插件的 PoW 实现与请求链直接受其启发，没有它就没有这个插件。
-- [AI 社区](https://linux.do/) —— 一个真诚分享、乐于折腾的地方。这个插件从想法到落地过程中的不少思路与反馈都来自社区讨论。
-
-## 授权
-
-MIT。`lib/pow.js` 的 DeepSeekHashV1 实现移植自 [magpie-deepseekweb2api](https://github.com/mu-zi-lee/magpie-deepseekweb2api)（MIT, Copyright © 2026 木子不是木子狸），算法与字节序未改动，详见 [LICENSE](LICENSE)。
+- [LinuxDO](https://linux.do/) —— 一个真诚分享、乐于折腾的地方。这个插件从想法到落地过程中的不少思路与反馈都来自社区讨论。
