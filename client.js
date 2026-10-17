@@ -91,6 +91,16 @@ window.__ModuleLoader__.load({
         hostApiError: '无法访问宿主 API（本页面只在桌面端设置里可用）',
         language: '语言',
         github: 'GitHub 仓库',
+        checkUpdate: '检查更新',
+        checkingUpdate: '检查中…',
+        updateNow: '一键更新',
+        updating: '更新中…',
+        upToDate: '✓ 已是最新版本（{version}）。',
+        updateAvailable: '发现新版本 {latest}（当前 {current}），可一键更新。',
+        updateDone: '✓ 已更新到 {version}。重启 DeepSeek Harness 后生效。',
+        updateFailed: '✗ 更新失败：{error}',
+        currentVersion: '当前版本：{version}',
+        openReleases: '查看 Releases',
       },
       en: {
         title: 'DeepSeek Web Search',
@@ -145,6 +155,16 @@ window.__ModuleLoader__.load({
         hostApiError: 'Host API unreachable (this page is only available inside desktop settings)',
         language: 'Language',
         github: 'GitHub repository',
+        checkUpdate: 'Check for updates',
+        checkingUpdate: 'Checking…',
+        updateNow: 'Update now',
+        updating: 'Updating…',
+        upToDate: '✓ Already up to date ({version}).',
+        updateAvailable: 'New version {latest} available (current {current}). One-click update ready.',
+        updateDone: '✓ Updated to {version}. Restart DeepSeek Harness to take effect.',
+        updateFailed: '✗ Update failed: {error}',
+        currentVersion: 'Current version: {version}',
+        openReleases: 'View Releases',
       },
     }
 
@@ -250,6 +270,7 @@ window.__ModuleLoader__.load({
       const [manual, setManual] = useState('')
       const [checkResult, setCheckResult] = useState(null)
       const [testResult, setTestResult] = useState(null)
+      const [updateState, setUpdateState] = useState(null)
       const [, setLocaleTick] = useState(0)
       const timerRef = useRef(null)
 
@@ -393,6 +414,31 @@ window.__ModuleLoader__.load({
       const view = describeState(status, busy === 'login' ? (status?.login?.label ?? t('waitingLogin')) : null)
       const browserOptions = browsers === null ? [] : browsers.browsers ?? []
 
+      /** 检查更新：比较本地与 GitHub 上的最新版本。 */
+      const checkUpdateNow = useCallback(async () => {
+        setUpdateState({ phase: 'checking' })
+        try {
+          const result = await (await fetch(API + '/update/check', { cache: 'no-store' })).json()
+          if (!result.ok) setUpdateState({ phase: 'error', text: t('updateFailed', { error: result.error ?? '' }) })
+          else if (result.updateAvailable) setUpdateState({ phase: 'available', latest: result.latestVersion, current: result.currentVersion })
+          else setUpdateState({ phase: 'upToDate', current: result.currentVersion })
+        } catch (error) {
+          setUpdateState({ phase: 'error', text: String(error) })
+        }
+      }, [])
+
+      /** 一键更新：后端在 profile 目录执行 pnpm update。 */
+      const applyUpdateNow = useCallback(async () => {
+        setUpdateState((state) => ({ ...state, phase: 'updating' }))
+        try {
+          const result = await (await fetch(API + '/update/apply', { method: 'POST' })).json()
+          if (result.ok) setUpdateState({ phase: 'done', version: result.version })
+          else setUpdateState({ phase: 'error', text: t('updateFailed', { error: result.error ?? '' }) })
+        } catch (error) {
+          setUpdateState({ phase: 'error', text: String(error) })
+        }
+      }, [])
+
       return h('div', { style: S.wrap },
         h('div', { style: S.header },
           h('h3', { style: S.title }, t('title')),
@@ -460,7 +506,22 @@ window.__ModuleLoader__.load({
                   h('button', { style: S.secondary, onClick: saveManual }, t('save')))),
               h('div', null,
                 h('button', { style: { ...S.secondary, color: '#cf222e' }, onClick: clearLoginData }, t('clearLoginData')),
-                h('div', { style: { ...S.small, marginTop: 4 } }, t('clearLoginDataDesc')))))))
+                h('div', { style: { ...S.small, marginTop: 4 } }, t('clearLoginDataDesc'))),
+              // 插件更新（比较 GitHub 最新版本 + 一键更新）
+              h('div', null,
+                h('div', { style: { ...S.row, margin: 0 } },
+                  h('button', {
+                    style: S.secondary,
+                    onClick: checkUpdateNow,
+                    disabled: updateState?.phase === 'checking' || updateState?.phase === 'updating',
+                  }, updateState?.phase === 'checking' ? t('checkingUpdate') : t('checkUpdate')),
+                  updateState?.phase === 'available' ? h('button', { style: S.primary, onClick: applyUpdateNow }, t('updateNow')) : null,
+                  updateState && (updateState.phase === 'upToDate' || updateState.phase === 'available') ? h('a', { style: { ...S.repoLink, fontSize: 12 }, href: REPO_URL + '/releases', target: '_blank', rel: 'noreferrer' }, t('openReleases')) : null),
+                updateState ? h('div', { style: { ...S.result, marginTop: 6 } },
+                  updateState.phase === 'upToDate' ? h('span', { style: S.ok }, t('upToDate', { version: updateState.current })) : null,
+                  updateState.phase === 'available' ? h('span', null, t('updateAvailable', { latest: updateState.latest, current: updateState.current })) : null,
+                  updateState.phase === 'done' ? h('span', { style: S.ok }, t('updateDone', { version: updateState.version })) : null,
+                  updateState.phase === 'error' ? h('span', { style: S.bad }, updateState.text) : null) : null)))))
     }
 
     /**
