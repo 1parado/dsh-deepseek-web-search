@@ -3,8 +3,9 @@ import assert from 'node:assert/strict'
 
 import { CODE, readEnvelope, redact, retryAfterMs, safeMessage, SearchError, withTimeout } from '../lib/envelope.js'
 
-const JWT_LIKE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk'
-const OPAQUE = 'rQ8vH2mKpLxN4tYbWdEfZcSaGuJiOnBqRlTmXyVzA1pCsDeFgHjKlMnOpQrStUvWxYz0123'
+// 下面是**合成**示例，只用于验证 redact()，不是任何真实凭证。secret-scan: ignore
+const JWT_LIKE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk' // secret-scan: ignore
+const OPAQUE = 'rQ8vH2mKpLxN4tYbWdEfZcSaGuJiOnBqRlTmXyVzA1pCsDeFgHjKlMnOpQrStUvWxYz0123' // secret-scan: ignore
 
 test('redact 抹掉 Bearer / cookie / userToken 标签后的值', () => {
   assert.equal(redact(`Authorization: Bearer ${OPAQUE}`), 'Authorization: Bearer [redacted]')

@@ -30,3 +30,6 @@ jobs:
 
       - name: 单元测试
         run: node --test
+
+      - name: 敏感信息扫描
+        run: node scripts/scan-secrets.mjs --all

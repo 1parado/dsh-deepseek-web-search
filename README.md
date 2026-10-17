@@ -221,11 +221,24 @@ node scripts\verify-live.mjs "随便一个有时效性的问题"
 ## 开发
 
 ```powershell
-node --test              # 57 个离线用例
-node scripts/check.mjs   # 语法检查 + 全部单测
+node --test                    # 67 个离线用例
+node scripts/scan-secrets.mjs  # 敏感信息扫描（暂存区；--all 扫全仓库）
+node scripts/check.mjs         # 语法 + 全部单测 + 扫描（发布前一次跑完）
 ```
 
-用例覆盖：SHA3-256 轮数与 `node:crypto` 逐字节对齐、PoW 求解/取消/非法挑战、SSE 三种换行、`results` 归集（去重/排序/日期归一/fragment 下标回归）、凭证优先级与坏文件、脱敏不破坏路径，以及用本地 mock 上游跑通的 `provider.search` 全链路（含「提前断开上游」与并发会话复用）。
+用例覆盖：SHA3-256 轮数与 `node:crypto` 逐字节对齐、PoW 求解/取消/非法挑战、SSE 三种换行、`results` 归集（去重/排序/日期归一/fragment 下标回归）、凭证优先级与坏文件、脱敏不破坏路径、扫描器自身的检出与误报抑制，以及用本地 mock 上游跑通的 `provider.search` 全链路（含「提前断开上游」与并发会话复用）。
+
+### 敏感信息门禁
+
+本仓库经手 `userToken`，所以带一道机械化闸门 —— 不靠人记：
+
+```powershell
+git config core.hooksPath .githooks   # 启用 pre-commit 钩子（一次性）
+```
+
+之后每次 `git commit` 都会扫暂存区：私钥块、平台 token 前缀、JWT、`userToken: "…"` 这类赋值、无前缀的高熵长串、以及 `.env` / `credentials.json` 等文件名。命中即拦下，且**只打印长度与前 4 位**，不会把命中内容回显到终端。
+
+确属合成示例时，在该行加 `secret-scan: ignore` 即可豁免。完整人工清单见 [docs/pre-release-checklist.md](docs/pre-release-checklist.md)。
 
 > **尚未真机验证**：真实账号的首次搜索。协议依据实测抓包结构与 Magpie 已真机验证过的 PoW 实现，全链路用 mock 上游验证。
 
@@ -240,8 +253,10 @@ lib/
   sse.js          SSE 帧解析与结构化结果归集
   credentials.js  三来源凭证解析
   envelope.js     错误、脱敏、响应包络
-scripts/          set-credential.mjs · verify-live.mjs · check.mjs
-test/             57 个离线用例 + 实测结构 fixture
+scripts/          set-credential.mjs · verify-live.mjs · scan-secrets.mjs · check.mjs
+test/             67 个离线用例 + 实测结构 fixture
+docs/             architecture.md · pre-release-checklist.md
+.githooks/        pre-commit（敏感信息门禁）
 cordis.patch.yml  bundle 补丁：钉 searchProvider + 挂载插件
 ```
 

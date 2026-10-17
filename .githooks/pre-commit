@@ -1,0 +1,24 @@
+#!/bin/sh
+# 提交前门禁：扫描暂存区里的敏感信息。
+#
+# 启用方式（在仓库根目录执行一次）：
+#   git config core.hooksPath .githooks
+#
+# 临时跳过（确认无误时）：
+#   git commit --no-verify
+set -e
+
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: 未找到 node，跳过敏感信息扫描" >&2
+  exit 0
+fi
+
+if [ ! -f scripts/scan-secrets.mjs ]; then
+  echo "pre-commit: 缺少 scripts/scan-secrets.mjs，跳过扫描" >&2
+  exit 0
+fi
+
+exec node scripts/scan-secrets.mjs

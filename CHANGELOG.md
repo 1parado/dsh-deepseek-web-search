@@ -2,6 +2,25 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.1.2] - 2026-10-17
+
+**新增**
+
+- `scripts/scan-secrets.mjs`：发布前敏感信息扫描。默认扫暂存区（pre-commit 用），
+  `--all` 扫全部被跟踪文件，`--path` 扫目录，`--json` 输出机器可读结果。
+  覆盖私钥块、常见平台 token 前缀、JWT、`userToken: "…"` 类赋值、无前缀高熵长串，
+  以及 `.env` / `credentials.json` / `*.pem` 等禁止提交的路径。
+  **命中内容只打印长度与前 4 位**，不回显原文。
+- `.githooks/pre-commit`：提交前门禁，`git config core.hooksPath .githooks` 启用。
+- `docs/pre-release-checklist.md`：人工自检清单（凭证、提交历史、文档截图、发布产物、
+  第三方合规、提交前自查，以及「万一已经泄露」的处理顺序）。
+- `test/scan-secrets.test.mjs`：9 个用例，既验证能抓到各类真凭证，也验证不误报
+  环境变量名 / URL / 路径 / 摘要。
+
+**变更**
+
+- `scripts/check.mjs` 现在把敏感信息扫描并入发布前门禁；CI 也新增该步骤。
+
 ## [0.1.1] - 2026-10-17
 
 **新增**
