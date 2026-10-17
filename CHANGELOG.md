@@ -2,6 +2,23 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.1] - 2026-10-17
+
+**修复**
+
+- 设置页「连接检测 / 搜索测试」报
+  `Cannot read properties of undefined (reading 'origin' / 'search')`：
+  apply() 组装 createSettingsApi 依赖时漏传 `provider` 与 `settings`。
+  handler 级单测全部绿但装配路径没人测 —— 新增 `test/assembly.test.mjs`
+  （跑真 apply() + 假 webServer + 真实 HTTP 请求），专抓这一类"漏传依赖"。
+
+**测试**
+
+- 装配测试用假 token 走真实上游，断言返回的是认证类失败而非组装错误
+  （注意：credentialsFile 必须显式指向临时文件，否则会读用户真实凭证，
+  那样检测"成功"是正确行为却让测试失去意义）。
+
+
 ## [0.3.0] - 2026-10-17
 
 按《认证管理模块 PRD》重构（F-01/02/04/05/06/08/09）：
@@ -138,5 +155,6 @@
 - 只认结构化字段，绝不从回答正文正则抓 URL。
 
 [0.1.0]: https://github.com/1parado/dsh-deepseek-web-search/releases/tag/v0.1.0
+
 
 
