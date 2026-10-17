@@ -46,6 +46,8 @@ window.__ModuleLoader__.load({
       const [loginState, setLoginState] = useState({ running: false, message: '' })
       const [manual, setManual] = useState('')
       const [notice, setNotice] = useState(null)
+      const [browsers, setBrowsers] = useState(null)
+      const [chosenBrowser, setChosenBrowser] = useState('')
       const timerRef = useRef(null)
 
       const refresh = useCallback(async () => {
@@ -59,6 +61,17 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         void refresh()
+        // 拉一次本机浏览器候选，供下拉选择
+        void (async () => {
+          try {
+            const response = await fetch(`${API}/browsers`, { cache: 'no-store' })
+            const payload = await response.json()
+            setBrowsers(Array.isArray(payload.browsers) ? payload.browsers : [])
+            if (payload.browsers?.length) setChosenBrowser((current) => current || payload.browsers[0].path)
+          } catch {
+            setBrowsers([])
+          }
+        })()
         return () => {
           if (timerRef.current) clearInterval(timerRef.current)
         }
@@ -68,7 +81,11 @@ window.__ModuleLoader__.load({
         setNotice(null)
         setLoginState({ running: true, message: '正在拉起浏览器…' })
         try {
-          const response = await fetch(`${API}/browser-login/start`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+          const response = await fetch(`${API}/browser-login/start`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(chosenBrowser ? { browserPath: chosenBrowser } : {}),
+          })
           const payload = await response.json()
           if (!response.ok || payload.error) {
             setLoginState({ running: false, message: payload.error ?? '启动失败' })
@@ -158,7 +175,19 @@ window.__ModuleLoader__.load({
                 : h('span', { style: styles.bad }, `✗ 未配置 —— ${resolved?.error ?? '尚未设置 userToken'}`)),
 
         h('div', { style: styles.row },
-          h('button', { style: { ...styles.button, ...styles.primary }, onClick: startLogin, disabled: loginState.running }, '一键浏览器登录'),
+          h('span', null, '使用浏览器：'),
+          browsers === null
+            ? h('span', { style: styles.muted }, '读取中…')
+            : browsers.length === 0
+              ? h('span', { style: styles.bad }, '未找到 Edge/Chrome，可手动安装或改用手动粘贴')
+              : h('select', {
+                  style: { ...styles.input, flex: '0 1 240px', minWidth: 180, fontFamily: 'inherit' },
+                  value: chosenBrowser,
+                  disabled: loginState.running,
+                  onChange: (event) => setChosenBrowser(event.target.value),
+                },
+                browsers.map((browser) => h('option', { key: browser.path, value: browser.path }, browser.label))),
+          h('button', { style: { ...styles.button, ...styles.primary }, onClick: startLogin, disabled: loginState.running || (browsers !== null && browsers.length === 0) }, '一键浏览器登录'),
           h('button', { style: styles.button, onClick: () => void refresh() }, '刷新状态'),
           loginState.running ? h('button', { style: styles.button, onClick: cancelLogin }, '取消') : null),
 
