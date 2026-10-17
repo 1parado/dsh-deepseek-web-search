@@ -2,6 +2,20 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.3] - 2026-10-17
+
+**修复**
+
+- 浏览器发现不再只看固定安装路径：Windows 上先查注册表（App Paths 与
+  Uninstall 的 DisplayIcon，覆盖任意安装盘符与便携目录），再查 PATH，
+  固定位置只作兜底；POSIX 上查 PATH。
+- CDP 调试端口可经 `$DSH_CDP_PORT` 覆盖，不再写死 9223。
+
+**变更**
+
+- `labelFor` 导出用于测试；新增 `test/browser-login.test.mjs`（5 个用例，
+  覆盖严格指定、静默回退禁止、去重与展示名映射）。
+
 ## [0.2.2] - 2026-10-17
 
 **修复**
@@ -104,3 +118,4 @@
 - 只认结构化字段，绝不从回答正文正则抓 URL。
 
 [0.1.0]: https://github.com/1parado/dsh-deepseek-web-search/releases/tag/v0.1.0
+
