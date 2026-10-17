@@ -21,4 +21,15 @@ if [ ! -f scripts/scan-secrets.mjs ]; then
   exit 0
 fi
 
+# Git for Windows 的 sh 给的是 POSIX 路径（/d/Git/cmd/git），Node 的 spawn 认不了。
+# 这里换算成 Windows 绝对路径传给扫描器，避免它在钩子里 ENOENT。
+if command -v git >/dev/null 2>&1; then
+  git_bin="$(command -v git)"
+  if command -v cygpath >/dev/null 2>&1; then
+    git_bin="$(cygpath -w "$git_bin")"
+  fi
+  DSH_GIT_EXECUTABLE="$git_bin"
+  export DSH_GIT_EXECUTABLE
+fi
+
 exec node scripts/scan-secrets.mjs

@@ -161,12 +161,58 @@ function looksBinary(buffer) {
   return probe.includes(0)
 }
 
-function git(args) {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+/** 缓存解析结果：undefined = 还没找过，null = 确实找不到。 */
+let gitCommand
+
+/**
+ * 定位 git 可执行文件。
+ *
+ * 为什么要费这个劲：pre-commit 钩子在 Git for Windows 的 sh 里跑，Node 继承到的
+ * PATH 是 POSIX 形式（/mingw64/bin），`spawn('git')` 会直接 ENOENT。所以钩子会把
+ * 绝对路径通过 `DSH_GIT_EXECUTABLE` 传进来，这里再兜底试 PATH 与常见安装位置。
+ * @returns {string|null} 可用的 git 命令，找不到返回 null。
+ */
+export function resolveGit() {
+  if (gitCommand !== undefined) return gitCommand
+  const candidates = [
+    process.env.DSH_GIT_EXECUTABLE,
+    'git',
+    ...(process.platform === 'win32'
+      ? [
+          process.env.ProgramFiles && path.join(process.env.ProgramFiles, 'Git', 'cmd', 'git.exe'),
+          process.env.ProgramW6432 && path.join(process.env.ProgramW6432, 'Git', 'cmd', 'git.exe'),
+          process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs', 'Git', 'cmd', 'git.exe'),
+        ]
+      : []),
+    '/usr/bin/git',
+    '/usr/local/bin/git',
+  ].filter((candidate) => typeof candidate === 'string' && candidate.length > 0)
+
+  for (const candidate of candidates) {
+    try {
+      execFileSync(candidate, ['--version'], { stdio: 'ignore' })
+      gitCommand = candidate
+      return gitCommand
+    } catch {
+      // 试下一个候选
+    }
+  }
+  gitCommand = null
+  return null
 }
 
+/** 跑 git，拿文本输出。 */
+function git(args) {
+  const command = resolveGit()
+  if (command === null) throw new Error('git 不可用')
+  return execFileSync(command, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+}
+
+/** 跑 git，拿原始字节（`git show :path` 可能是二进制）。 */
 function gitBuffer(args) {
-  return execFileSync('git', args, { maxBuffer: 64 * 1024 * 1024 })
+  const command = resolveGit()
+  if (command === null) throw new Error('git 不可用')
+  return execFileSync(command, args, { maxBuffer: 64 * 1024 * 1024 })
 }
 
 /** 暂存区文件列表。 */
@@ -226,6 +272,16 @@ function main() {
   const options = parseArguments(process.argv.slice(2))
   if (options.help) {
     console.log('用法：node scripts/scan-secrets.mjs [--all | --path <目录>] [--json]')
+    return
+  }
+
+  // 安全门禁在无法执行时必须失败关闭 —— 静默放过比不做检查更糟。
+  if (options.path === null && resolveGit() === null) {
+    console.error('✗ 找不到 git，无法确定要扫描哪些文件。')
+    console.error('  pre-commit 钩子在 Git Bash 下需要绝对路径：')
+    console.error('    设 DSH_GIT_EXECUTABLE 指向 git 可执行文件（如 D:\\Git\\cmd\\git.exe）')
+    console.error('  本次扫描失败关闭，不会放行。')
+    process.exitCode = 2
     return
   }
 
