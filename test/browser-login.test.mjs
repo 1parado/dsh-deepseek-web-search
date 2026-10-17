@@ -48,8 +48,8 @@ test('列表去重且路径真实存在', () => {
 })
 
 test('展示名映射常见浏览器', () => {
-  const sample = labelFor('C:\\Tools\\msedge.exe')
+  const sample = labelFor(path.join('C:', 'Tools', 'msedge.exe'))
   assert.equal(sample, 'Microsoft Edge')
-  const unknown = labelFor('D:\\MyTools\\mybrowser.exe')
+  const unknown = labelFor(path.join('D:', 'MyTools', 'mybrowser.exe'))
   assert.equal(unknown, 'mybrowser')
 })
