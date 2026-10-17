@@ -257,11 +257,15 @@ window.__ModuleLoader__.load({
       summaryInner: { display: 'inline-flex', alignItems: 'center', gap: 6 },
       chevron: { display: 'inline-block', transition: 'transform 0.15s ease', fontSize: 10, color: 'var(--text-secondary, #666)' },
       inner: { padding: '16px', borderTop: '1px solid var(--border-color, #eee)', display: 'grid', gap: 16, background: 'var(--card-bg, #fff)' },
-      fieldRow: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-      // 凭证路径：等宽 + 省略号 + 悬停显示全路径
-      pathBox: { flex: '1 1 240px', minWidth: 200, display: 'flex', alignItems: 'center', gap: 4, border: '1px solid var(--border-color, #e0e0e0)', borderRadius: 8, padding: '0 4px 0 10px', height: 32, background: 'var(--input-bg, #fff)' },
-      path: { flex: 1, fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', direction: 'rtl', textAlign: 'left', color: 'var(--text-secondary, #666)' },
-      input: { flex: '1 1 260px', minWidth: 220, height: 40, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border-color, #d0d0d0)', fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace', background: 'var(--input-bg, #fff)', color: 'inherit' },
+      fieldRow: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 },
+      field: { display: 'grid', gap: 6, minWidth: 0 },
+      fieldLabel: { fontSize: 12, color: 'var(--text-secondary, #666)' },
+      // 凭证路径：等宽 + 中间省略 + 悬停显示全路径；图标内嵌框右缘
+      pathBox: { display: 'flex', alignItems: 'center', gap: 4, border: '1px solid var(--border-color, #e0e0e0)', borderRadius: 8, padding: '0 4px 0 12px', height: 36, background: 'var(--input-bg, #fff)', minWidth: 0 },
+      path: { flex: 1, minWidth: 0, fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', direction: 'rtl', textAlign: 'left', color: 'var(--text-secondary, #666)' },
+      pathActions: { display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 },
+      inputWrap: { flex: '1 1 260px', minWidth: 0, display: 'flex', alignItems: 'center', border: '1px solid var(--border-color, #d0d0d0)', borderRadius: 8, height: 40, background: 'var(--input-bg, #fff)', paddingRight: 6 },
+      input: { flex: 1, minWidth: 0, height: 38, padding: '0 12px', border: 'none', outline: 'none', background: 'transparent', fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace', color: 'inherit' },
       small: { fontSize: 12, color: 'var(--text-secondary, #666)', wordBreak: 'break-all' },
       result: { fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-word' },
       divider: { border: 'none', borderTop: '1px solid var(--border-color, #eee)', margin: 0 },
@@ -532,29 +536,31 @@ window.__ModuleLoader__.load({
               h('span', { style: S.summaryInner, onClick: undefined },
                 GEAR_ICON, t('advanced'))),
             h('div', { style: S.inner },
-              // 凭证路径：路径框（省略号+悬停全路径）+ 右侧图标按钮
-              h('div', { style: S.fieldRow },
+              // 凭证文件：标签在上，路径框独占一行（图标内嵌右缘）
+              h('div', { style: S.field },
+                h('div', { style: S.fieldLabel }, t('credentialsFile')),
                 h('div', { style: S.pathBox, title: credentialsFile },
                   h('span', { style: S.path }, credentialsFile || '…'),
-                  h('button', {
-                    style: S.iconBtn,
-                    title: t('copy'),
-                    onClick: () => {
-                      void navigator.clipboard?.writeText(credentialsFile)
-                      setNotice({ ok: true, text: t('pathCopied') })
-                    },
-                  }, COPY_ICON),
-                  h('button', { style: S.iconBtn, title: t('openFolder'), onClick: () => { void fetch(API + '/open-credentials-folder', { method: 'POST' }) } }, FOLDER_ICON)),
-                h('span', { style: S.label }, t('credentialsFile'))),
-              // 手动粘贴 userToken：右侧粘贴按钮，输入框高度与下拉一致
-              h('div', null,
-                h('div', { style: { ...S.small, marginBottom: 8 } }, t('manualPaste')),
+                  h('span', { style: S.pathActions },
+                    h('button', {
+                      style: S.iconBtn,
+                      title: t('copy'),
+                      onClick: () => {
+                        void navigator.clipboard?.writeText(credentialsFile)
+                        setNotice({ ok: true, text: t('pathCopied') })
+                      },
+                    }, COPY_ICON),
+                    h('button', { style: S.iconBtn, title: t('openFolder'), onClick: () => { void fetch(API + '/open-credentials-folder', { method: 'POST' }) } }, FOLDER_ICON)))),
+              // 手动粘贴 userToken：标签在上，粘贴图标内嵌输入框右缘，保存按钮同行
+              h('div', { style: S.field },
+                h('div', { style: S.fieldLabel }, t('manualPaste')),
                 h('div', { style: S.fieldRow },
-                  h('input', { style: S.input, placeholder: t('pasteTokenPlaceholder'), value: manual, onChange: (event) => setManual(event.target.value) }),
-                  h('button', { style: S.iconBtn, height: undefined, title: t('clipboardPaste'), onClick: async () => {
-                    try { setManual(await navigator.clipboard.readText()) } catch { /* 剪贴板权限不足时忽略 */ }
-                  } }, CLIPBOARD_ICON),
-                  h('button', { style: S.secondary, onClick: saveManual }, t('save')))),
+                  h('div', { style: S.inputWrap },
+                    h('input', { style: S.input, placeholder: t('pasteTokenPlaceholder'), value: manual, onChange: (event) => setManual(event.target.value) }),
+                    h('button', { style: { ...S.iconBtn, border: 'none', height: 24, width: 24, padding: 0, justifyContent: 'center' }, title: t('clipboardPaste'), onClick: async () => {
+                      try { setManual(await navigator.clipboard.readText()) } catch { /* 剪贴板权限不足时忽略 */ }
+                    } }, CLIPBOARD_ICON)),
+                  h('button', { style: { ...S.secondary, flexShrink: 0 }, onClick: saveManual }, t('save')))),
               // 危险操作：红色描边按钮
               h('div', null,
                 h('button', { style: S.dangerOutline, onClick: clearLoginData }, t('clearLoginData')),
