@@ -2,6 +2,30 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.0] - 2026-10-17
+
+**新增**
+
+- **设置页区块**（客户端半身，`client.js`）：设置 → 内置插件 里出现「DeepSeek 网页搜索」
+  卡片 —— 凭证状态、一键浏览器登录、手动粘贴兜底，全部走同源 API。
+- **一键浏览器登录**（`lib/browser-login.js`）：拉起独立的 Edge/Chrome 窗口
+  （`--remote-debugging-port` + 独立临时用户目录，不干扰日常会话），通过 DevTools
+  协议轮询 `localStorage.userToken`，登录成功后自动写入凭证文件。只读 `userToken`
+  一个键，读完即止。
+- 设置页同源 API（`/api/deepseek-web-search/*`）：`status`（只报来源/长度，不含
+  token）、`credential`（POST 写入 0600 文件）、`browser-login/start|poll|cancel`、
+  `open-credentials-folder`。`webServer` 不存在时静默降级（headless 组合）。
+
+**修复**
+
+- 设置 API 的写入目标必须与凭证解析器是**同一个文件**：初版曾写死默认路径，
+  在注入了自定义 `credentialsFile` 的组合里会写到错误位置。已在测试中用临时
+  目录锁住这个行为。
+
+**变更**
+
+- `package.json` 声明 `dsh.client`（浏览器半身）与 `./client` 导出。
+
 ## [0.1.2] - 2026-10-17
 
 **新增**

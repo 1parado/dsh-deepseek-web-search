@@ -5,19 +5,24 @@ import { readFile } from 'node:fs/promises'
 import { apply, inject, name as pluginName } from '../lib/index.js'
 import { PROVIDER_ID } from '../lib/provider.js'
 
-/** 造一个够用的 cordis ctx：只提供 provider 注册与日志。 */
+/** 造一个够用的 cordis ctx：provider 注册、日志、inject 都要有。 */
 function stubContext() {
   const registered = []
   const warnings = []
+  const injected = []
   return {
     registered,
     warnings,
+    injected,
     ctx: {
       logger: {
         info: () => {},
         warn: (message) => warnings.push(String(message)),
       },
       get: () => undefined,
+      // apply() 会在 webServer 存在时挂设置页 API；stub 没有 webServer，
+      // 真实 cordis 会把这条 fiber 保持 pending —— 正是想要的"静默降级"。
+      inject: (names, setup) => injected.push(names),
       web: {
         registerSearchProvider: (provider) => {
           registered.push(provider)

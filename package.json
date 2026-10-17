@@ -1,16 +1,18 @@
 {
   "name": "dsh-deepseek-web-search",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "DeepSeek 网页版（chat.deepseek.com）搜索提供方：用网页账号 userToken 把联网搜索接入 DSH 的 ctx.web seam，内置 web_search 工具无需改动。",
   "main": "./lib/index.js",
   "exports": {
     ".": "./lib/index.js",
+    "./client": "./client.js",
     "./package.json": "./package.json"
   },
   "files": [
     "lib",
+    "client.js",
     "scripts",
     "docs",
     "cordis.patch.yml",
@@ -42,6 +44,11 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
     }
   },
   "scripts": {

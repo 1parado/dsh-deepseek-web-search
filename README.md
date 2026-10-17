@@ -113,7 +113,19 @@ dsh-deepseek-web-search：已注册搜索提供方 "deepseek-web"（model=defaul
 
 ## 填凭证
 
-### 怎么拿到 userToken
+### 方式一：设置页一键登录（推荐）
+
+重启 DSH 后，到 **设置 → 内置插件 → DeepSeek 网页搜索**：
+
+1. 点 **一键浏览器登录** —— 会打开一个独立的浏览器窗口（独立用户目录，不影响你日常的浏览器会话）。
+2. 在那个窗口里登录 chat.deepseek.com。
+3. 登录成功后插件自动读取 token 并写入凭证文件，状态变为「✓ 已配置」。
+
+完成后重启 DSH 即可使用。全程不需要手动复制粘贴。
+
+### 方式二：手动粘贴
+
+同样在设置页卡片里展开「手动粘贴 userToken」，粘进去点保存。token 的取法：
 
 1. 浏览器登录 <https://chat.deepseek.com>，确认右上角是自己的账号。
 2. 按 `F12` 打开开发者工具（Chrome / Edge / Firefox 均可）。
@@ -246,15 +258,17 @@ git config core.hooksPath .githooks   # 启用 pre-commit 钩子（一次性）
 
 ```text
 lib/
-  index.js        插件入口：name / inject / apply，配置归一
+  index.js        插件入口：provider 注册 + 设置页 API（webServer 存在时）
   provider.js     ctx.web 搜索提供方（契约实现、错误收敛、会话缓存）
+  browser-login.js  CDP 方式读取浏览器里的 userToken（一键登录）
   client.js       网页协议 HTTP 客户端（请求头、会话、PoW 挑战、SSE 流）
   pow.js          DeepSeekHashV1 与增量求解
   sse.js          SSE 帧解析与结构化结果归集
   credentials.js  三来源凭证解析
   envelope.js     错误、脱敏、响应包络
+client.js         浏览器半身：设置页区块（状态/一键登录/手动粘贴）
 scripts/          set-credential.mjs · verify-live.mjs · scan-secrets.mjs · check.mjs
-test/             67 个离线用例 + 实测结构 fixture
+test/             70 个离线用例 + 实测结构 fixture
 docs/             architecture.md · pre-release-checklist.md
 .githooks/        pre-commit（敏感信息门禁）
 cordis.patch.yml  bundle 补丁：钉 searchProvider + 挂载插件
