@@ -289,6 +289,11 @@ cordis.patch.yml  bundle 补丁：钉 searchProvider + 挂载插件
 
 更完整的设计说明见 [docs/architecture.md](docs/architecture.md)。
 
+## 致谢
+
+- [magpie-deepseekweb2api](https://github.com/mu-zi-lee/magpie-deepseekweb2api)（[木子不是木子狸](https://github.com/mu-zi-lee)）—— 本项目的起点。它把 chat.deepseek.com 的网页协议（`userToken` + PoW + SSE）在 Magpie 上跑通并开源，本插件的 PoW 实现与请求链直接受其启发，没有它就没有这个插件。
+- [AI 社区](https://linux.do/) —— 一个真诚分享、乐于折腾的地方。这个插件从想法到落地过程中的不少思路与反馈都来自社区讨论。
+
 ## 授权
 
 MIT。`lib/pow.js` 的 DeepSeekHashV1 实现移植自 [magpie-deepseekweb2api](https://github.com/mu-zi-lee/magpie-deepseekweb2api)（MIT, Copyright © 2026 木子不是木子狸），算法与字节序未改动，详见 [LICENSE](LICENSE)。
