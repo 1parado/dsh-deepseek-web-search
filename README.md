@@ -113,9 +113,31 @@ dsh-deepseek-web-search：已注册搜索提供方 "deepseek-web"（model=defaul
 
 ## 填凭证
 
-`userToken` 取自浏览器：登录 `chat.deepseek.com` → `F12` → **Application → Local Storage → `userToken`**（若值是 JSON 对象，取其中的 `value`）。
+### 怎么拿到 userToken
 
-三种填法，按优先级：
+1. 浏览器登录 <https://chat.deepseek.com>，确认右上角是自己的账号。
+2. 按 `F12` 打开开发者工具（Chrome / Edge / Firefox 均可）。
+3. 切到 **Console**，粘贴执行：
+
+   ```js
+   (() => { const raw = localStorage.getItem('userToken'); try { return JSON.parse(raw).value } catch { return raw } })()
+   ```
+
+   打印出来的一长串就是 token（通常几百个字符）。
+
+<details>
+<summary>不想用 Console？手动点选</summary>
+
+- **Chrome / Edge**：`Application` → 左侧 `Storage` → `Local Storage` → `https://chat.deepseek.com` → 找 `userToken` 行。值通常形如 `{"value":"xxxxx","__version":"0"}`，复制 `value` 里那一串（**不含引号**）。
+- **Firefox**：`存储` → `本地存储` → `https://chat.deepseek.com` → 同上。
+
+</details>
+
+> 复制时别漏字符、别带引号。若值不是 JSON 而是纯字符串，直接整串复制。它等同于账号的完整访问权，不要截图或粘贴到公开场合。
+
+### 三种填法
+
+按优先级：
 
 | # | 方式 | 适合 |
 |:-:|:--|:--|
@@ -126,6 +148,14 @@ dsh-deepseek-web-search：已注册搜索提供方 "deepseek-web"（model=defaul
 `set-credential.mjs --show` 只报告**当前解析到哪个来源**，不打印值；`--clear` 删除文件。
 
 凭证**每次搜索都重新解析**，所以轮换 token 不需要重启 DSH。
+
+### 设完立刻验证（不用重启）
+
+```powershell
+node scripts\verify-live.mjs "随便一个有时效性的问题"
+```
+
+它会用真实账号跑完整链路（开会话 → PoW → completion → 结果归集），成功时打印拿到的来源列表，失败时给出错误码与对照提示。**先过这一步，再重启 DSH**，能省掉一轮排查。
 
 ## 配置
 
@@ -158,6 +188,7 @@ dsh-deepseek-web-search：已注册搜索提供方 "deepseek-web"（model=defaul
 | 现象 | 原因 / 处理 |
 |:--|:--|
 | `WEB_PROVIDER_CREDENTIAL_MISSING` | 没找到凭证，按提示三选一 |
+| `被拒绝（40003）Authorization Failed` | **最常见**：userToken 无效或已过期，重新取 token |
 | `…账号登录已失效（HTTP 401/403）` | token 过期或被登出，重新取 `userToken` |
 | `completion HTTP 429` | 上游风控/限流（无凭证探测本端点也常返回 429），稍后再试 |
 | `没有返回结构化结果（conversation_mode=…）` | 上游改了协议，或该查询没触发联网搜索 |
@@ -209,7 +240,7 @@ lib/
   sse.js          SSE 帧解析与结构化结果归集
   credentials.js  三来源凭证解析
   envelope.js     错误、脱敏、响应包络
-scripts/          set-credential.mjs · check.mjs
+scripts/          set-credential.mjs · verify-live.mjs · check.mjs
 test/             57 个离线用例 + 实测结构 fixture
 cordis.patch.yml  bundle 补丁：钉 searchProvider + 挂载插件
 ```

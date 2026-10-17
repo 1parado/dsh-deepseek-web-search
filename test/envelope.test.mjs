@@ -85,6 +85,20 @@ test('readEnvelope 处理空体、坏 JSON、业务码与 HTTP 错误', async ()
   )
 })
 
+test('biz_code 40003（token 无效）被认成登录失效，而不是笼统的"被拒绝"', async () => {
+  const body = JSON.stringify({ data: { biz_code: 40003, biz_msg: 'Authorization Failed (invalid token)' } })
+  await assert.rejects(() => readEnvelope(new Response(body, { status: 200 }), 'chat session'), (error) => {
+    assert.equal(error.code, CODE.providerError)
+    assert.match(error.message, /登录已失效/)
+    assert.match(error.message, /重新登录/)
+    assert.match(error.message, /40003/)
+    return true
+  })
+  // 同义的英文文案即使换了业务码也要认出来
+  const alt = JSON.stringify({ data: { biz_code: 40100, biz_msg: 'Invalid token provided' } })
+  await assert.rejects(() => readEnvelope(new Response(alt, { status: 200 }), 'chat session'), /登录已失效/)
+})
+
 test('readEnvelope 解出 biz_data，没有则退回 data 与整体', async () => {
   const wrapped = new Response(JSON.stringify({ data: { biz_code: 0, biz_data: { chat_session: { id: 's-1' } } } }), { status: 200 })
   assert.deepEqual(await readEnvelope(wrapped, 'chat session'), { chat_session: { id: 's-1' } })

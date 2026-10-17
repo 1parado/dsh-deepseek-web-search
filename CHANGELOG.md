@@ -2,6 +2,26 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.1.1] - 2026-10-17
+
+**新增**
+
+- `scripts/verify-live.mjs`：用真实账号跑一次完整搜索链路（开会话 → PoW →
+  completion → 结果归集），不用重启 DSH 就能确认 userToken 是否可用。
+
+**修复**
+
+- 实测发现 token 无效时上游返回 **HTTP 200 + `biz_code: 40003`**
+  （`Authorization Failed (invalid token)`），并非 HTTP 401/403。此前只会显示
+  「被拒绝（40003）」，现在映射为明确的登录失效提示并给出重取 token 的指引；
+  同义的英文文案（`invalid token` / `unauthorized`）即使换了业务码也能识别。
+
+**文档**
+
+- 安装说明改为桌面端走 GUI 插件管理器 —— 实测 `dsh plugin --profile desktop`
+  会挂住，`--dump-config` 直接报 profile 由 Electron 独占管理。
+- 补全「怎么拿到 userToken」的两种取法（Console 一行命令 / DevTools 手动点选）。
+
 ## [0.1.0] - 2026-10-17
 
 首个版本。
