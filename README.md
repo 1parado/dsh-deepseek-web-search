@@ -69,29 +69,47 @@ flowchart LR
 
 需要 DSH 桌面端（对齐运行时 `0.2.0-rc.2`）与 Node `>=22.19`。
 
-```powershell
-# 1) 安装插件（插件管理器接受绝对路径）
-dsh plugin --profile desktop add <本目录绝对路径>
+**桌面端请用应用内的插件管理器安装。** 桌面 profile 由 Electron 独占管理，`dsh plugin` CLI 无法真正管理它：
 
-# 2) 重启 DSH（bundle patch 在启动时应用）
-
-# 3) 填入网页版凭证
-node scripts\set-credential.mjs --user-token "<token>"
+```text
+error: profile "desktop" is managed exclusively by the Electron application
 ```
 
-也可以走 GUI：**设置 → 插件 → 安装** → 填入绝对路径。
+三步：
 
-确认生效：
+**① 设置 → 插件 → 安装**，填入以下任一种来源：
+
+```text
+github:1parado/dsh-deepseek-web-search     # 从 GitHub 装
+E:\path\to\dsh-deepseek-web-search         # 或本地目录的绝对路径
+```
+
+**② 重启 DSH** —— bundle patch 在启动时应用。
+
+**③ 填入网页版凭证**（见下一节）。
+
+<details>
+<summary>CLI 安装（仅适用于自建 profile，<b>不适用于 desktop</b>）</summary>
+
+`--profile` 是必填参数，漏了会报 `required option '--profile <name>' not specified`：
 
 ```powershell
-dsh plugin --profile desktop list        # 应列出 dsh-deepseek-web-search
+dsh plugin --profile <自建 profile 名> add github:1parado/dsh-deepseek-web-search
 ```
+
+但 `desktop` 这个 profile 例外：CLI 能改它的 `package.json` 与 `node_modules`，却走不到最后的 bundle 注册，进程会挂住不退出。桌面端一律走上面的 GUI 路径。
+
+</details>
+
+### 确认装好了
 
 重启后日志里应出现：
 
 ```text
 dsh-deepseek-web-search：已注册搜索提供方 "deepseek-web"（model=default，端点=…，可用性=就绪）
 ```
+
+若没有这行、或搜索报 `configured web provider "deepseek-web" is not registered`，说明 bundle 层已生效但插件没挂载 —— 到 **设置 → 插件** 确认它处于启用状态。
 
 ## 填凭证
 
