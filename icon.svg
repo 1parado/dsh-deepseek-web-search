@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- 底板：圆角方块，DSH 蓝到深蓝的克制双色 -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4d6bfe"/>
+      <stop offset="1" stop-color="#2f4bd8"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#bg)"/>
+
+  <!-- 放大镜：web search 的通用符号 -->
+  <circle cx="27" cy="27" r="13" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+  <line x1="37" y1="37" x2="49" y2="49" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- 镜片内的搜索波纹：表达"联网检索"而非本地查找 -->
+  <path d="M20 27c2.5-3 5-3 7 0s4.5 3 7 0" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- 右上角地球经纬暗示：web 而非本地 -->
+  <g stroke="#ffffff" stroke-width="2" opacity="0.55" fill="none">
+    <circle cx="48" cy="17" r="7"/>
+    <ellipse cx="48" cy="17" rx="3.2" ry="7"/>
+    <line x1="41" y1="17" x2="55" y2="17"/>
+  </g>
+</svg>

@@ -1,10 +1,13 @@
 /**
  * dsh-deepseek-web-search — 浏览器半身。
  *
- * 给设置页挂一个区块：状态展示、一键浏览器登录（自动读 localStorage 写凭证）、
- * 手动粘贴兜底。数据走同源 /api/deepseek-web-search/*，不引入任何依赖。
+ * 设置页区块按 PRD 结构分层：
+ *   1. 连接状态卡片（状态名 + 一句话说明 + 主操作按钮）
+ *   2. 浏览器选择（系统默认 / 指定浏览器 下拉）
+ *   3. 高级设置（默认折叠：凭证路径、连接检测、搜索测试、手动粘贴、清除登录数据）
  *
- * 手写 ModuleLoader bundle：无构建步骤，只依赖 shell 已有的 react。
+ * 所有状态来自 /status、/check-connection、/test-search 的真实结果；
+ * 登录进度由 /browser-login/poll 的 state 驱动。样式全部走主题变量。
  *
  * @module dsh-deepseek-web-search/client
  */
@@ -18,42 +21,76 @@ window.__ModuleLoader__.load({
     const { createElement: h, useState, useEffect, useCallback, useRef } = React
 
     const name = 'dsh-deepseek-web-search'
-    /** 浏览器半身只依赖 slots；locale 不需要（文案走中文常量）。 */
     const inject = ['slots']
-
     const API = '/api/deepseek-web-search'
 
-    /** 卡片容器样式，全部走主题变量，跟随明暗切换。 */
-    const styles = {
-      card: { border: '1px solid var(--border-color, #ddd)', borderRadius: 10, padding: '16px 18px', margin: '12px 0', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.6 },
-      title: { fontSize: 15, fontWeight: 600, marginBottom: 6 },
-      muted: { opacity: 0.7, fontSize: 13 },
-      row: { display: 'flex', gap: 8, alignItems: 'center', margin: '10px 0', flexWrap: 'wrap' },
-      button: { padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border-color, #ccc)', background: 'var(--button-bg, #f5f5f5)', cursor: 'pointer', fontSize: 13 },
-      primary: { background: 'var(--accent-color, #4d6bfe)', color: '#fff', border: 'none' },
-      input: { flex: 1, minWidth: 260, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-color, #ccc)', fontSize: 13, fontFamily: 'monospace' },
-      ok: { color: '#2da44e' },
+    /** 主题变量驱动的样式表（PRD 5.1：克制浅色、圆角 12-16、按钮高 40-44）。 */
+    const S = {
+      wrap: { padding: '20px 24px', maxWidth: 720 },
+      title: { fontSize: 16, fontWeight: 600, margin: '0 0 4px' },
+      desc: { fontSize: 13, color: 'var(--text-secondary, #666)', margin: '0 0 16px', lineHeight: 1.6 },
+      card: { border: '1px solid var(--border-color, #e0e0e0)', borderRadius: 14, padding: '20px 24px', background: 'var(--card-bg, #fff)' },
+      stateName: { fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 },
+      stateDot: { width: 9, height: 9, borderRadius: '50%', flexShrink: 0 },
+      stateDesc: { fontSize: 13, color: 'var(--text-secondary, #666)', margin: '6px 0 16px', lineHeight: 1.55 },
+      row: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '12px 0' },
+      label: { fontSize: 13, color: 'var(--text-secondary, #666)', flexShrink: 0 },
+      select: { flex: '1 1 240px', minWidth: 200, height: 40, padding: '0 10px', borderRadius: 10, border: '1px solid var(--border-color, #d0d0d0)', fontSize: 13, background: 'var(--input-bg, #fff)', color: 'inherit' },
+      primary: { height: 42, padding: '0 22px', borderRadius: 10, border: 'none', background: 'var(--accent-color, #4d6bfe)', color: '#fff', fontSize: 14, cursor: 'pointer', fontWeight: 500 },
+      secondary: { height: 42, padding: '0 16px', borderRadius: 10, border: '1px solid var(--border-color, #d0d0d0)', background: 'transparent', color: 'inherit', fontSize: 13, cursor: 'pointer' },
+      disabled: { opacity: 0.55, cursor: 'not-allowed' },
+      ok: { color: '#1a7f37' },
       bad: { color: '#cf222e' },
-      code: { background: 'var(--code-bg, rgba(0,0,0,.05))', padding: '2px 6px', borderRadius: 4, fontSize: 12 },
+      dotOk: { background: '#2da44e' },
+      dotBad: { background: '#cf222e' },
+      dotIdle: { background: '#9e9e9e' },
+      dotBusy: { background: '#4d6bfe', animation: 'dsh-dws-pulse 1.4s ease-in-out infinite' },
+      advanced: { marginTop: 14, borderTop: '1px solid var(--border-color, #eee)', paddingTop: 12 },
+      summary: { cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary, #666)', userSelect: 'none' },
+      inner: { marginTop: 12, display: 'grid', gap: 10 },
+      input: { flex: '1 1 260px', minWidth: 220, height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border-color, #d0d0d0)', fontSize: 12, fontFamily: 'monospace', background: 'var(--input-bg, #fff)', color: 'inherit' },
+      small: { fontSize: 12, color: 'var(--text-secondary, #666)', wordBreak: 'break-all' },
+      result: { fontSize: 12, marginTop: 6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' },
+    }
+
+    /** 状态点样式：成功绿 / 失败红 / 进行中蓝闪 / 空闲灰。 */
+    function dot(kind) {
+      if (kind === 'ok') return S.dotOk
+      if (kind === 'bad') return S.dotBad
+      if (kind === 'busy') return S.dotBusy
+      return S.dotIdle
     }
 
     /**
-     * 主组件：状态 + 一键登录 + 手动兜底。
-     * @param {object} props - slot 注入的 props（未用到具体字段）。
+     * 连接状态 → 卡片展示（状态名/说明/主按钮文案/状态点类别）。
+     * 只认真实业务结果，不做任何乐观假设（PRD F-06）。
      */
+    function describeState(status, loginLabel) {
+      if (loginLabel) return { name: loginLabel, desc: '浏览器已打开，请在新窗口里登录 DeepSeek；完成后自动写回凭证。', button: '取消', kind: 'busy', running: true }
+      const local = status?.local
+      const resolved = status?.resolved
+      if (status?.error) return { name: '无法读取状态', desc: status.error, button: '重试', kind: 'bad', retry: true }
+      if (resolved?.source) {
+        return { name: '已连接', desc: '凭证已就绪（来源：' + (resolved.source === status.credentialsFile ? '本地凭证文件' : resolved.source) + '）。可以直接使用 web_search。', button: '重新登录', kind: 'ok', connected: true }
+      }
+      if (local?.corrupt) return { name: '凭证文件损坏', desc: 'credentials.json 内容不是合法 JSON 或缺少 userToken 字段。可重新登录覆盖，或手动粘贴正确的 token。', button: '登录并修复', kind: 'bad' }
+      return { name: '未连接', desc: '还没有配置网页版凭证。点击下方按钮，在浏览器里登录一次即可。', button: '登录并连接 DeepSeek', kind: 'idle' }
+    }
+
     function SettingsPage() {
       const [status, setStatus] = useState(null)
-      const [loginState, setLoginState] = useState({ running: false, message: '' })
-      const [manual, setManual] = useState('')
-      const [notice, setNotice] = useState(null)
       const [browsers, setBrowsers] = useState(null)
-      const [chosenBrowser, setChosenBrowser] = useState('')
+      const [browserChoice, setBrowserChoice] = useState('default')
+      const [busy, setBusy] = useState(null)
+      const [notice, setNotice] = useState(null)
+      const [manual, setManual] = useState('')
+      const [checkResult, setCheckResult] = useState(null)
+      const [testResult, setTestResult] = useState(null)
       const timerRef = useRef(null)
 
       const refresh = useCallback(async () => {
         try {
-          const response = await fetch(`${API}/status`, { cache: 'no-store' })
-          setStatus(await response.json())
+          setStatus(await (await fetch(API + '/status', { cache: 'no-store' })).json())
         } catch {
           setStatus({ error: '无法访问宿主 API（本页面只在桌面端设置里可用）' })
         }
@@ -61,15 +98,12 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         void refresh()
-        // 拉一次本机浏览器候选，供下拉选择
         void (async () => {
           try {
-            const response = await fetch(`${API}/browsers`, { cache: 'no-store' })
-            const payload = await response.json()
-            setBrowsers(Array.isArray(payload.browsers) ? payload.browsers : [])
-            if (payload.browsers?.length) setChosenBrowser((current) => current || payload.browsers[0].path)
+            const payload = await (await fetch(API + '/browsers', { cache: 'no-store' })).json()
+            setBrowsers(payload)
           } catch {
-            setBrowsers([])
+            setBrowsers({ browsers: [] })
           }
         })()
         return () => {
@@ -77,56 +111,85 @@ window.__ModuleLoader__.load({
         }
       }, [refresh])
 
-      const startLogin = useCallback(async () => {
+      /** 主按钮动作：连接中 → 取消；否则 → 启动登录（F-07 防重复点击）。 */
+      const primaryAction = useCallback(async () => {
         setNotice(null)
-        setLoginState({ running: true, message: '正在拉起浏览器…' })
+        setCheckResult(null)
+        setTestResult(null)
+        const view = describeState(status, status?.login?.label)
+        if (view.running) {
+          await fetch(API + '/browser-login/cancel', { method: 'POST' }).catch(() => {})
+          return
+        }
+        if (view.retry) return void refresh()
+        setBusy('login')
         try {
-          const response = await fetch(`${API}/browser-login/start`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(chosenBrowser ? { browserPath: chosenBrowser } : {}),
-          })
+          const body = { browserPath: browserChoice === 'default' ? 'default' : browserChoice }
+          const response = await fetch(API + '/browser-login/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
           const payload = await response.json()
           if (!response.ok || payload.error) {
-            setLoginState({ running: false, message: payload.error ?? '启动失败' })
+            setNotice({ ok: false, text: payload.error ?? '启动失败' })
+            setBusy(null)
+            await refresh()
             return
           }
-          setLoginState({ running: true, message: '浏览器已打开。请在页面里登录 DeepSeek；登录后 token 会自动写入，此窗口可关闭。' })
-          // 轮询结果；拿到结果或 5 分钟后停止
+          await refresh()
           const deadline = Date.now() + 5 * 60_000
           if (timerRef.current) clearInterval(timerRef.current)
           timerRef.current = setInterval(async () => {
             if (Date.now() > deadline) {
               clearInterval(timerRef.current)
-              setLoginState({ running: false, message: '等待登录超时，可重试或改用手动粘贴。' })
+              setBusy(null)
+              await refresh()
               return
             }
             try {
-              const poll = await fetch(`${API}/browser-login/poll`, { method: 'POST' })
-              const result = await poll.json()
-              if (result.running === false && result.outcome) {
+              const poll = await (await fetch(API + '/browser-login/poll', { method: 'POST' })).json()
+              if (poll.running === false && poll.outcome) {
                 clearInterval(timerRef.current)
-                if (result.outcome.ok) {
-                  setLoginState({ running: false, message: `✓ 已写入凭证（长度=${result.outcome.length}）` })
-                  setNotice({ ok: true, text: '登录成功，重启 DSH 后 web_search 即可用网页账号搜索。' })
-                } else {
-                  setLoginState({ running: false, message: `失败：${result.outcome.error}` })
-                }
-                void refresh()
+                setBusy(null)
+                if (poll.outcome.ok) setNotice({ ok: true, text: '✓ 凭证已保存（长度=' + poll.outcome.length + '）。建议在高级设置里做一次「连接检测」确认可用。' })
+                else setNotice({ ok: false, text: '登录失败：' + poll.outcome.error })
+                await refresh()
               }
             } catch {
               // 宿主暂时不可达，继续轮询
             }
-          }, 3000)
+          }, 2500)
         } catch (error) {
-          setLoginState({ running: false, message: String(error) })
+          setBusy(null)
+          setNotice({ ok: false, text: String(error) })
         }
-      }, [refresh])
+      }, [status, browserChoice, refresh])
 
-      const cancelLogin = useCallback(async () => {
-        await fetch(`${API}/browser-login/cancel`, { method: 'POST' }).catch(() => {})
-        if (timerRef.current) clearInterval(timerRef.current)
-        setLoginState({ running: false, message: '已取消。' })
+      /** F-09 第 2 层：连接检测。 */
+      const checkConnectionNow = useCallback(async () => {
+        setCheckResult(null)
+        setBusy('check')
+        try {
+          const result = await (await fetch(API + '/check-connection', { method: 'POST' })).json()
+          setCheckResult(result.ok
+            ? { ok: true, text: '✓ 连接检测通过：凭证通过了 DeepSeek 的真实校验。' }
+            : { ok: false, text: result.code === 'auth-invalid' ? '✗ 凭证已失效，请重新登录。' : '✗ 检测失败（' + (result.code ?? 'unknown') + '）：' + (result.error ?? '') })
+        } catch (error) {
+          setCheckResult({ ok: false, text: String(error) })
+        }
+        setBusy(null)
+      }, [])
+
+      /** F-09 第 3 层：搜索测试。 */
+      const testSearchNow = useCallback(async () => {
+        setTestResult(null)
+        setBusy('test')
+        try {
+          const result = await (await fetch(API + '/test-search', { method: 'POST' })).json()
+          setTestResult(result.ok
+            ? { ok: true, text: '✓ 搜索测试通过：拿到 ' + result.sources + ' 条来源。web_search 可正常使用。' }
+            : { ok: false, text: '✗ 搜索测试失败：' + (result.error ?? '') })
+        } catch (error) {
+          setTestResult({ ok: false, text: String(error) })
+        }
+        setBusy(null)
       }, [])
 
       const saveManual = useCallback(async () => {
@@ -137,83 +200,92 @@ window.__ModuleLoader__.load({
           return
         }
         try {
-          const response = await fetch(`${API}/credential`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ userToken }),
-          })
+          const response = await fetch(API + '/credential', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userToken }) })
           const payload = await response.json()
-          if (!response.ok || payload.error) {
-            setNotice({ ok: false, text: payload.error ?? '写入失败' })
-            return
+          setNotice(payload.error ? { ok: false, text: payload.error } : { ok: true, text: '✓ 已保存。' })
+          if (!payload.error) {
+            setManual('')
+            await refresh()
           }
-          setNotice({ ok: true, text: `✓ 已写入 ${payload.file}` })
-          setManual('')
-          void refresh()
         } catch (error) {
           setNotice({ ok: false, text: String(error) })
         }
       }, [manual, refresh])
 
-      const resolved = status?.resolved
-      const ok = Boolean(resolved?.source)
+      const clearLoginData = useCallback(async () => {
+        // F-04：清除前明确告知范围
+        if (!window.confirm('清除 DSH 专用登录数据？\n\n只删除本插件创建的登录目录（不影响你日常浏览器里的任何数据），下次连接需要重新登录。')) return
+        await fetch(API + '/clear-login-data', { method: 'POST' }).catch(() => {})
+        setNotice({ ok: true, text: '已清除 DSH 专用登录数据。' })
+      }, [])
 
-      return h('div', { style: styles.card },
-        h('div', { style: styles.title }, 'DeepSeek 网页搜索'),
-        h('div', { style: styles.muted },
-          '让内置 web_search 用你的网页版 DeepSeek 账号（chat.deepseek.com）做联网搜索，无需 API Key。'),
+      const view = describeState(status, busy === 'login' ? (status?.login?.label ?? '等待用户登录') : null)
+      const browserOptions = browsers === null ? [] : browsers.browsers ?? []
 
-        h('div', { style: styles.row },
-          h('span', null, '凭证状态：'),
-          status === null
-            ? h('span', { style: styles.muted }, '读取中…')
-            : status.error
-              ? h('span', { style: styles.bad }, status.error)
-              : resolved?.source
-                ? h('span', { style: styles.ok },
-                    `✓ 已配置（来源：${resolved.source}，长度=${resolved.length}${resolved.hasCookie ? '，含 Cookie' : ''}）`)
-                : h('span', { style: styles.bad }, `✗ 未配置 —— ${resolved?.error ?? '尚未设置 userToken'}`)),
+      return h('div', { style: S.wrap },
+        h('h3', { style: S.title }, 'DeepSeek 网页搜索'),
+        h('p', { style: S.desc }, '让内置 web_search 用你的网页版 DeepSeek 账号（chat.deepseek.com）做联网搜索，无需 API Key。'),
 
-        h('div', { style: styles.row },
-          h('span', null, '使用浏览器：'),
-          browsers === null
-            ? h('span', { style: styles.muted }, '读取中…')
-            : browsers.length === 0
-              ? h('span', { style: styles.bad }, '未找到 Edge/Chrome，可手动安装或改用手动粘贴')
-              : h('select', {
-                  style: { ...styles.input, flex: '0 1 240px', minWidth: 180, fontFamily: 'inherit' },
-                  value: chosenBrowser,
-                  disabled: loginState.running,
-                  onChange: (event) => setChosenBrowser(event.target.value),
-                },
-                browsers.map((browser) => h('option', { key: browser.path, value: browser.path }, browser.label))),
-          h('button', { style: { ...styles.button, ...styles.primary }, onClick: startLogin, disabled: loginState.running || (browsers !== null && browsers.length === 0) }, '一键浏览器登录'),
-          h('button', { style: styles.button, onClick: () => void refresh() }, '刷新状态'),
-          loginState.running ? h('button', { style: styles.button, onClick: cancelLogin }, '取消') : null),
+        h('div', { style: S.card },
+          // 状态卡片
+          h('div', { style: S.stateName },
+            h('span', { style: { ...S.stateDot, ...dot(view.kind) } }),
+            view.name),
+          h('div', { style: S.stateDesc }, view.desc),
+          h('div', { style: S.row },
+            h('button', {
+              style: { ...S.primary, ...(busy === 'login' ? S.disabled : {}) },
+              onClick: primaryAction,
+              disabled: busy === 'login',
+            }, busy === 'login' ? '登录中…' : view.button),
+            view.connected ? h('button', { style: S.secondary, onClick: checkConnectionNow, disabled: busy !== null }, busy === 'check' ? '检测中…' : '连接检测') : null,
+            view.connected ? h('button', { style: S.secondary, onClick: testSearchNow, disabled: busy !== null }, busy === 'test' ? '测试中…' : '搜索测试') : null),
+          notice ? h('div', { style: { ...S.result, ...(notice.ok ? S.ok : S.bad) } }, notice.text) : null,
 
-        loginState.message
-          ? h('div', { style: styles.muted }, loginState.message)
-          : null,
+          // 浏览器选择（登录中禁用）
+          h('div', { style: { ...S.row, marginTop: 16 } },
+            h('span', { style: S.label }, '使用浏览器：'),
+            h('select', {
+              style: S.select,
+              value: browserChoice,
+              disabled: busy === 'login',
+              onChange: (event) => setBrowserChoice(event.target.value),
+            },
+              h('option', { value: 'default' }, '系统默认浏览器'),
+              browserOptions.map((browser) => h('option', { key: browser.path, value: browser.path }, browser.label))),
+            browsers !== null && browserOptions.length === 0 ? h('span', { style: S.bad }, '未发现 Chromium 系浏览器') : null),
+          h('div', { style: S.small },
+            browserChoice === 'default'
+              ? '将使用 Windows 当前默认浏览器打开登录页；不修改系统设置。若该浏览器无法自动读取凭证，会明确提示。'
+              : '将严格使用所选浏览器（不存在时直接报错，不会偷偷换别的）。'),
 
-        h('div', { style: { ...styles.muted, margin: '6px 0 2px' } },
-          '一键登录会打开一个独立的浏览器窗口（不干扰日常会话），在页面里登录 DeepSeek 后自动读取 token。'),
+          checkResult ? h('div', { style: { ...S.result, ...(checkResult.ok ? S.ok : S.bad) } }, checkResult.text) : null,
+          testResult ? h('div', { style: { ...S.result, ...(testResult.ok ? S.ok : S.bad) } }, testResult.text) : null,
 
-        h('details', { style: { margin: '8px 0' } },
-          h('summary', { style: { cursor: 'pointer', ...styles.muted } }, '手动粘贴 userToken'),
-          h('div', { style: styles.row },
-            h('input', {
-              style: styles.input,
-              placeholder: '从 chat.deepseek.com 的 localStorage 里复制 userToken',
-              value: manual,
-              onChange: (event) => setManual(event.target.value),
-            }),
-            h('button', { style: styles.button, onClick: saveManual }, '保存'))),
-
-        notice ? h('div', { style: notice.ok ? styles.ok : styles.bad }, notice.text) : null,
-
-        h('div', { style: { ...styles.muted, marginTop: 8 } },
-          '凭证文件：', h('code', { style: styles.code }, status?.credentialsFile ?? '…')),
-      )
+          // 高级设置（默认折叠，F-08）
+          h('details', { style: S.advanced },
+            h('summary', { style: S.summary }, '高级设置'),
+            h('div', { style: S.inner },
+              h('div', { style: S.small },
+                '凭证文件：',
+                h('code', null, status?.credentialsFile ?? '…'), ' ',
+                h('button', {
+                  style: { ...S.secondary, height: 28, padding: '0 10px', fontSize: 12 },
+                  onClick: () => {
+                    void navigator.clipboard?.writeText(status?.credentialsFile ?? '')
+                    setNotice({ ok: true, text: '路径已复制。' })
+                  },
+                }, '复制'),
+                ' ',
+                h('button', { style: { ...S.secondary, height: 28, padding: '0 10px', fontSize: 12 }, onClick: () => { void fetch(API + '/open-credentials-folder', { method: 'POST' }) } }, '打开目录')),
+              h('div', null,
+                h('div', { style: { ...S.small, marginBottom: 4 } }, '手动粘贴 userToken（与一键登录等效）：'),
+                h('div', { style: S.row },
+                  h('input', { style: S.input, placeholder: '粘贴 userToken', value: manual, onChange: (event) => setManual(event.target.value) }),
+                  h('button', { style: S.secondary, onClick: saveManual }, '保存'))),
+              h('div', null,
+                h('button', { style: { ...S.secondary, color: '#cf222e' }, onClick: clearLoginData }, '清除 DSH 专用登录数据'),
+                h('div', { style: { ...S.small, marginTop: 4 } }, '只删除本插件创建的登录目录，不影响你日常浏览器里的任何数据。'))))))
     }
 
     /**
