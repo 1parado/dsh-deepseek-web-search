@@ -2,6 +2,26 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.0] - 2026-10-17
+
+按《认证管理模块 PRD》重构（F-01/02/04/05/06/08/09）：
+
+- 浏览器三模式：系统默认（注册表 UserChoice 链路，实测可解析装在
+  AppData 的 Chromium 系浏览器）｜指定浏览器（严格使用）｜自动挑选
+- 登录状态机：launching → waiting-login → token-captured → saving，
+  全部由真实业务结果驱动
+- 凭证原子写入（tmp→校验→rename）：写坏文件不再可能，重新登录失败
+  不破坏旧凭证
+- 三层检测：本地文件检查 → 连接检测（真实调 chat_session/create）→
+  搜索测试（用户主动触发）
+- DSH 专用登录目录持久化，二次连接免登录；设置页可清除
+- 高级设置折叠：凭证路径、手动粘贴、清除登录数据
+- 设置页 UI 按视觉规范重写（状态卡片/状态点/主按钮随状态变化）
+- 新增 web search 主题图标（icon.svg）
+- 修复：resolveDefaultBrowser 内 execFileSync 未导入，ReferenceError
+  被 catch 吞成 null
+
+
 ## [0.2.3] - 2026-10-17
 
 **修复**
@@ -118,4 +138,5 @@
 - 只认结构化字段，绝不从回答正文正则抓 URL。
 
 [0.1.0]: https://github.com/1parado/dsh-deepseek-web-search/releases/tag/v0.1.0
+
 
